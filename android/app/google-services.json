@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "372745075992",
+    "project_id": "ttj-voj-app",
+    "storage_bucket": "ttj-voj-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:372745075992:android:84ed5ded3264027ffd326d",
+        "android_client_info": {
+          "package_name": "com.neoerainfotech.ttjapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC7SYoqafluApXFlIw1YH8KWbietoAnj90"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

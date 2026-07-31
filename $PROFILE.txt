@@ -1,0 +1,5 @@
+$env:JAVA_HOME = "V:\Android Studio\jbr"
+$env:Path += ";V:\Android Studio\jbr\bin"
+$env:Path += ";V:\Flutter\flutter\bin"
+cd C:\flutter_application_1
+flutter build appbundle
