@@ -5,7 +5,6 @@ import 'package:permission_handler/permission_handler.dart';
 import 'aadhar_upload.dart';
 
 class PermissionAccessScreen extends StatefulWidget {
-  // NEW: Catching the shopping cart baton!
   final Map<String, dynamic> schemeData;
 
   const PermissionAccessScreen({super.key, required this.schemeData});
@@ -14,21 +13,19 @@ class PermissionAccessScreen extends StatefulWidget {
   State<PermissionAccessScreen> createState() => _PermissionAccessScreenState();
 }
 
-// Added WidgetsBindingObserver to refresh when user returns from Settings
 class _PermissionAccessScreenState extends State<PermissionAccessScreen> with WidgetsBindingObserver {
-  // Brand Purple Color
   final Color brandPurple = const Color(0xFF5D1F88);
 
+  // Only Camera & Location need explicit OS permission checks
   Map<Permission, PermissionStatus> _statuses = {
     Permission.camera: PermissionStatus.denied,
-    Permission.photos: PermissionStatus.denied,
     Permission.location: PermissionStatus.denied,
   };
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addObserver(this); // Listen for app lifecycle changes
+    WidgetsBinding.instance.addObserver(this);
     _checkInitialStatuses();
   }
 
@@ -38,7 +35,6 @@ class _PermissionAccessScreenState extends State<PermissionAccessScreen> with Wi
     super.dispose();
   }
 
-  // If user goes to settings and comes back, this triggers a re-check
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
@@ -47,24 +43,19 @@ class _PermissionAccessScreenState extends State<PermissionAccessScreen> with Wi
   }
 
   Future<void> _checkInitialStatuses() async {
-    // If running on Web or Desktop, bypass mobile permissions
+    // Desktop or Web bypass
     if (kIsWeb || (!Platform.isAndroid && !Platform.isIOS)) {
       setState(() {
         _statuses = {
           Permission.camera: PermissionStatus.granted,
-          Permission.photos: PermissionStatus.granted,
           Permission.location: PermissionStatus.granted,
         };
       });
       return;
     }
 
-    // Mobile specific logic
-    // Note: For Android 13+, photos is correct. For older, storage might be needed.
-    // We check current status for all required fields.
     Map<Permission, PermissionStatus> updatedStatuses = {
       Permission.camera: await Permission.camera.status,
-      Permission.photos: await Permission.photos.status,
       Permission.location: await Permission.location.status,
     };
 
@@ -78,16 +69,8 @@ class _PermissionAccessScreenState extends State<PermissionAccessScreen> with Wi
 
     PermissionStatus status;
 
-    // Handle Location specifically if needed
     if (permission == Permission.location) {
       status = await Permission.locationWhenInUse.request();
-    } else if (permission == Permission.photos && Platform.isAndroid) {
-      // For Android 13+ (SDK 33), Permission.photos is used. 
-      // For older versions, it falls back to Storage.
-      status = await Permission.photos.request();
-      if (status.isDenied) {
-        status = await Permission.storage.request();
-      }
     } else {
       status = await permission.request();
     }
@@ -97,8 +80,8 @@ class _PermissionAccessScreenState extends State<PermissionAccessScreen> with Wi
         _showSettingsDialog();
       }
     }
-    
-    _checkInitialStatuses(); // Re-verify all after request
+
+    _checkInitialStatuses();
   }
 
   void _showSettingsDialog() {
@@ -106,9 +89,12 @@ class _PermissionAccessScreenState extends State<PermissionAccessScreen> with Wi
       context: context,
       builder: (context) => AlertDialog(
         title: const Text("Permission Required"),
-        content: const Text("This permission is permanently denied. Please enable it in the app settings to continue."),
+        content: const Text("This permission is required to proceed. Please enable it in your device settings."),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text("CANCEL")),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("CANCEL"),
+          ),
           TextButton(
             onPressed: () {
               openAppSettings();
@@ -122,7 +108,6 @@ class _PermissionAccessScreenState extends State<PermissionAccessScreen> with Wi
   }
 
   bool _allPermissionsGranted() {
-    // Check if everything is either granted or limited (iOS photos)
     return _statuses.values.every((status) => status.isGranted || status.isLimited);
   }
 
@@ -135,8 +120,10 @@ class _PermissionAccessScreenState extends State<PermissionAccessScreen> with Wi
           icon: const Icon(Icons.arrow_back_ios_new, color: Colors.black, size: 20),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text("App Permissions", 
-            style: TextStyle(color: Colors.black, fontSize: 18, fontWeight: FontWeight.bold)),
+        title: const Text(
+          "App Permissions",
+          style: TextStyle(color: Colors.black, fontSize: 18, fontWeight: FontWeight.bold),
+        ),
         backgroundColor: Colors.white,
         elevation: 0,
         centerTitle: true,
@@ -156,35 +143,18 @@ class _PermissionAccessScreenState extends State<PermissionAccessScreen> with Wi
                 "To provide the best experience, we need the following permissions:",
                 style: TextStyle(color: Colors.grey, fontSize: 15),
               ),
-              
-              if (kIsWeb || (!Platform.isAndroid && !Platform.isIOS))
-                Container(
-                  margin: const EdgeInsets.only(top: 10),
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(color: Colors.orange.shade50, borderRadius: BorderRadius.circular(8)),
-                  child: const Row(
-                    children: [
-                      Icon(Icons.laptop, color: Colors.orange, size: 16),
-                      SizedBox(width: 8),
-                      Text("Auto-granted only for PC", style: TextStyle(color: Colors.orange, fontSize: 12, fontWeight: FontWeight.bold)),
-                    ],
-                  ),
-                ),
 
               const SizedBox(height: 30),
-              
+
+              // 1. Camera Tile
               _permissionTile(
                 icon: Icons.camera_alt_outlined,
                 title: "Camera",
                 subtitle: "Required for profile photos and scanning documents.",
                 permission: Permission.camera,
               ),
-              _permissionTile(
-                icon: Icons.photo_library_outlined,
-                title: "Media & Gallery",
-                subtitle: "To upload your existing photos and documents.",
-                permission: Permission.photos,
-              ),
+
+              // 2. Location Tile
               _permissionTile(
                 icon: Icons.location_on_outlined,
                 title: "Location",
@@ -192,26 +162,34 @@ class _PermissionAccessScreenState extends State<PermissionAccessScreen> with Wi
                 permission: Permission.location,
               ),
 
-              const SizedBox(height: 40), 
-              
+              const SizedBox(height: 40),
+
+              // Continue Button
               SizedBox(
                 width: double.infinity,
                 height: 55,
                 child: ElevatedButton(
-                  onPressed: _allPermissionsGranted() 
-                    ? () => Navigator.pushReplacement(
-  context, 
-  MaterialPageRoute(builder: (context) => AadharUploadPage(schemeData: widget.schemeData))
-) 
-                    : null, 
+                  onPressed: _allPermissionsGranted()
+                      ? () => Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => AadharUploadPage(schemeData: widget.schemeData),
+                            ),
+                          )
+                      : null,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: brandPurple,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     disabledBackgroundColor: Colors.grey.shade300,
                   ),
                   child: const Text(
-                    "CONTINUE", 
-                    style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 1.1)
+                    "CONTINUE",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1.1,
+                    ),
                   ),
                 ),
               ),
@@ -224,12 +202,11 @@ class _PermissionAccessScreenState extends State<PermissionAccessScreen> with Wi
   }
 
   Widget _permissionTile({
-    required IconData icon, 
-    required String title, 
-    required String subtitle, 
-    required Permission permission
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required Permission permission,
   }) {
-    // Consider both granted and limited (for iOS gallery) as "On"
     PermissionStatus status = _statuses[permission] ?? PermissionStatus.denied;
     bool isGranted = status.isGranted || status.isLimited;
 
@@ -262,9 +239,7 @@ class _PermissionAccessScreenState extends State<PermissionAccessScreen> with Wi
             value: isGranted,
             activeThumbColor: brandPurple,
             activeTrackColor: brandPurple.withOpacity(0.4),
-            onChanged: (kIsWeb || (!Platform.isAndroid && !Platform.isIOS)) || isGranted 
-                ? null 
-                : (val) => _requestPermission(permission),
+            onChanged: isGranted ? null : (val) => _requestPermission(permission),
           ),
         ],
       ),
