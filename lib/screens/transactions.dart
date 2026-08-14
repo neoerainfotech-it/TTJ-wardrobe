@@ -7,7 +7,7 @@ import 'package:intl/intl.dart';
 
 // Core Localization & Navigation
 import '../core/localization/language_provider.dart';
-import '../core/app_settings.dart'; // <--- 1. ADDED IMPORT HERE
+import '../core/app_settings.dart';
 import 'welcome.dart';
 import 'profile.dart';
 import 'redemption.dart';
@@ -90,13 +90,15 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
               String formattedDate =
                   DateFormat('dd MMM yyyy  hh:mm a').format(date);
 
-              // Determine if this is a "Success" type for Green/Confirmed status
-              bool isConfirmed =
-                  tx['type'] == 'Earned' || tx['type'] == 'Credit';
+              // 🚀 Replaces 'gg', 'g', 'gram', 'grams', or 'garms' unit text from API with 'gm'
+              String rawTitle = tx['details'] ?? tx['description'] ?? "Gold Purchase";
+              String formattedTitle = rawTitle.replaceAll(
+                RegExp(r'(?<=\d|\b)(gg|g|gram|grams|garms)\b', caseSensitive: false),
+                'gm',
+              );
 
               return _TransactionTile(
-                title: tx['details'] ?? tx['description'] ?? "Gold Purchase",
-                // Ensure this key 'payment_id' matches the PHP array key above
+                title: formattedTitle,
                 transactionId: tx['payment_id']?.toString() ?? "N/A",
                 subtitle: formattedDate,
                 amount: tx['amount']?.toString() ?? "0.00",
@@ -106,13 +108,13 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                 statusKey: (tx['type'] == 'Earned' || tx['type'] == 'Credit')
                     ? 'confirmed'
                     : 'canceled',
-              ); // Proper closing of _TransactionTile
-            }, // Proper closing of itemBuilder
-          ); // Proper closing of ListView.builder
-        }, // Proper closing of FutureBuilder builder
+              );
+            },
+          );
+        },
       ),
       bottomNavigationBar: _buildBottomNav(context),
-    ); // Proper closing of Scaffold
+    );
   }
 
   Widget _buildBottomNav(BuildContext context) {
@@ -133,7 +135,6 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
             ),
             const Icon(Icons.compare_arrows, color: Colors.white, size: 32),
             
-            // <--- 2. ADDED IF STATEMENT HERE
             if (appSettings.showGoldWallet)
               IconButton(
                 icon: const Icon(Icons.account_balance_wallet_outlined,
@@ -144,7 +145,6 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                         builder: (context) => const GoldWalletScreen())),
               ),
             
-            // <--- 3. ADDED IF STATEMENT HERE
             if (appSettings.showRedemption)
               IconButton(
                 icon: const Icon(Icons.card_giftcard,
@@ -210,7 +210,6 @@ class _TransactionTile extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Display the details column content (Title + Grams)
                 Text(title,
                     style: const TextStyle(
                         fontWeight: FontWeight.bold, fontSize: 13)),

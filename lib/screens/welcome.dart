@@ -11,7 +11,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:firebase_messaging/firebase_messaging.dart'; // 🟢 FCM Package Added
+import 'package:firebase_messaging/firebase_messaging.dart';
 
 // Internal Screen Imports
 import 'profile.dart';
@@ -23,7 +23,7 @@ import 'scheme_joining.dart';
 import 'login_screen.dart';
 import 'scheme_installment.dart';
 import '../core/localization/language_provider.dart';
-import '../core/app_settings.dart'; // <--- Imports global appSettings variable
+import '../core/app_settings.dart';
 
 class WelcomeScreen extends StatefulWidget {
   const WelcomeScreen({super.key});
@@ -128,21 +128,25 @@ class _WelcomeScreenState extends State<WelcomeScreen>
     super.dispose();
   }
 
+  // Helper to standardize gold weight strings into 'X gm'
+  String _formatGoldUnit(String? raw, {String fallback = "0.000"}) {
+    if (raw == null) return "$fallback gm";
+    String cleaned = raw.replaceAll(RegExp(r'[^\d.]'), '').trim();
+    return cleaned.isEmpty ? "$fallback gm" : "$cleaned gm";
+  }
+
   // 🟢 AUTOMATIC FCM TOPIC SYNC FUNCTION
   Future<void> _syncUserFcmTopics(bool isRegisteredInScheme) async {
     try {
       FirebaseMessaging messaging = FirebaseMessaging.instance;
 
-      // 1. Keep all users on global channel
       await messaging.subscribeToTopic('all_users');
 
       if (isRegisteredInScheme) {
-        // User HAS active scheme -> Join scheme_users & REMOVE from non_scheme_users
         await messaging.subscribeToTopic('scheme_users');
         await messaging.unsubscribeFromTopic('non_scheme_users');
         debugPrint("FCM WELCOME SYNC: Joined 'scheme_users' & Left 'non_scheme_users'");
       } else {
-        // User DOES NOT have scheme -> Join non_scheme_users & REMOVE from scheme_users
         await messaging.subscribeToTopic('non_scheme_users');
         await messaging.unsubscribeFromTopic('scheme_users');
         debugPrint("FCM WELCOME SYNC: Joined 'non_scheme_users' & Left 'scheme_users'");
@@ -284,7 +288,6 @@ class _WelcomeScreenState extends State<WelcomeScreen>
             _enrollmentData = data;
           });
 
-          // 🟢 CHECK SCHEME STATUS & SYNC FCM TOPICS INSTANTLY
           String schemeStatus = data['scheme_status']?.toString() ?? "Active";
           bool isActiveScheme = (schemeStatus.toLowerCase() == 'active');
           await _syncUserFcmTopics(isActiveScheme);
@@ -294,7 +297,6 @@ class _WelcomeScreenState extends State<WelcomeScreen>
           setState(() {
             _enrollmentData = null;
           });
-          // 🟢 NO ACTIVE SCHEME ENROLLMENT FOUND
           await _syncUserFcmTopics(false);
         }
       } else {
@@ -302,7 +304,6 @@ class _WelcomeScreenState extends State<WelcomeScreen>
       }
     } catch (e) {
       debugPrint("Error fetching enrollment: $e");
-      // Fallback topic sync check on network failure
       bool storedSchemeStatus = (await SharedPreferences.getInstance())
               .getBool('has_active_scheme') ??
           false;
@@ -493,11 +494,11 @@ class _WelcomeScreenState extends State<WelcomeScreen>
       return const SizedBox.shrink();
     }
 
-    String pendingGrams =
-        _enrollmentData?['pending_grams']?.toString() ?? "0.000";
-    String targetWeight =
-        _enrollmentData?['target_weight']?.toString() ?? "0.000";
-        
+    // 🚀 Formatted with 'gm' unit
+    String pendingGrams = _formatGoldUnit(_enrollmentData?['pending_grams']?.toString());
+    String targetWeight = _formatGoldUnit(_enrollmentData?['target_weight']?.toString());
+    String totalGold = _formatGoldUnit(_enrollmentData?['total_gold_saved']?.toString());
+
     String rawMaturity = _enrollmentData?['maturity_date'] ?? "TBD";
     String maturity = rawMaturity;
     if (rawMaturity != "TBD" && rawMaturity.contains("-")) {
@@ -506,9 +507,6 @@ class _WelcomeScreenState extends State<WelcomeScreen>
         maturity = "${parts[2]}-${parts[1]}-${parts[0]}"; 
       }
     }
-
-    String totalGold =
-        _enrollmentData?['total_gold_saved']?.toString() ?? "0.000g";
 
     int daysRemaining = _enrollmentData?['days_remaining'] ?? 0;
     String expiryStatus = _enrollmentData?['expiry_status'] ?? "active";
@@ -688,7 +686,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                                 totalGold,
                                 style: GoogleFonts.inter(
                                     color: Colors.black,
-                                    fontSize: 15,
+                                    fontSize: 14,
                                     fontWeight: FontWeight.w900),
                               ),
                             ),
@@ -1510,7 +1508,6 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                       MaterialPageRoute(
                           builder: (_) => const TransactionsScreen()))),
               
-              // Directly referencing the global appSettings instance matching profile.dart
               if (appSettings.showGoldWallet)
                 IconButton(
                     icon: const Icon(Icons.account_balance_wallet_outlined,

@@ -25,7 +25,7 @@ class _SchemeInstallmentScreenState extends State<SchemeInstallmentScreen> {
   bool _isProcessingPayment = false;
   
   Map<String, dynamic>? _enrollmentData;
-  List<dynamic> _paymentHistory = []; // 🚀 Added variable to hold history
+  List<dynamic> _paymentHistory = [];
   int? _userId;
 
   @override
@@ -52,7 +52,6 @@ class _SchemeInstallmentScreenState extends State<SchemeInstallmentScreen> {
     if (_userId == null) return;
 
     try {
-      // 🚀 Fetch BOTH status and history at the same time
       final resStatus = await http.get(Uri.parse("${_baseUrl}get_enrollment_status.php?user_id=$_userId"));
       final resHistory = await http.get(Uri.parse("${_baseUrl}get_scheme_history.php?user_id=$_userId"));
 
@@ -63,7 +62,7 @@ class _SchemeInstallmentScreenState extends State<SchemeInstallmentScreen> {
         if (mounted) {
           setState(() {
             _enrollmentData = dataStatus;
-            _paymentHistory = dataHistory['data'] ?? []; // 🚀 Save the history to the list
+            _paymentHistory = dataHistory['data'] ?? [];
             _isLoading = false;
           });
         }
@@ -133,7 +132,7 @@ class _SchemeInstallmentScreenState extends State<SchemeInstallmentScreen> {
         _showMessage("Payment Successful! Gold added to your scheme.", Colors.green);
         _amountController.clear();
         setState(() => _isLoading = true);
-        _fetchData(); // Refresh the screen to show new balance and new history item
+        _fetchData();
       } else {
         _showMessage(result['message'] ?? "Error saving payment.", Colors.red);
       }
@@ -167,7 +166,10 @@ class _SchemeInstallmentScreenState extends State<SchemeInstallmentScreen> {
     }
 
     String totalPaid = _enrollmentData?['total_amount_paid']?.toString() ?? "0.00";
-   String goldEarned = _enrollmentData?['total_gold_saved']?.toString() ?? "0.000";
+    
+    // 🚀 Strips unit letters from API and keeps only numeric value
+    String rawGold = _enrollmentData?['total_gold_saved']?.toString() ?? "0.000";
+    String goldEarned = rawGold.replaceAll(RegExp(r'[^\d.]'), '').trim();
 
     return Scaffold(
       appBar: AppBar(
@@ -201,7 +203,8 @@ class _SchemeInstallmentScreenState extends State<SchemeInstallmentScreen> {
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
                         const Text("Total Gold Saved", style: TextStyle(color: Colors.white70, fontSize: 12)),
-                        Text("${goldEarned}g", style: GoogleFonts.inter(color: goldYellow, fontSize: 22, fontWeight: FontWeight.bold)),
+                        // 🚀 Changed unit label to 'gm'
+                        Text("$goldEarned gm", style: GoogleFonts.inter(color: goldYellow, fontSize: 22, fontWeight: FontWeight.bold)),
                       ],
                     ),
                   ],
@@ -242,7 +245,7 @@ class _SchemeInstallmentScreenState extends State<SchemeInstallmentScreen> {
             ),
             const SizedBox(height: 40),
 
-            // --- 🚀 REAL HISTORY SECTION ---
+            // --- REAL HISTORY SECTION ---
             Text("Payment History", style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87)),
             const SizedBox(height: 10),
             
@@ -254,6 +257,12 @@ class _SchemeInstallmentScreenState extends State<SchemeInstallmentScreen> {
                   itemCount: _paymentHistory.length,
                   itemBuilder: (context, index) {
                     final item = _paymentHistory[index];
+                    
+                    // 🚀 Replaces 'gg', 'g', 'gram', 'grams', or 'garms' in the API history text with 'gm'
+                    String detailsText = item['details']
+                        ?.toString()
+                        .replaceAll(RegExp(r'\b(gg|g|gram|grams|garms)\b', caseSensitive: false), 'gm') ?? '';
+
                     return Card(
                       margin: const EdgeInsets.only(bottom: 12),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -266,16 +275,14 @@ class _SchemeInstallmentScreenState extends State<SchemeInstallmentScreen> {
                           ),
                           child: const Icon(Icons.account_balance_wallet, color: Colors.green, size: 20),
                         ),
-                        // Shows the amount
                         title: Text(
                           item['amount'].toString(), 
                           style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: brandPurple),
                         ),
-                        // Shows the Date and Grams
                         subtitle: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(item['details'].toString(), style: const TextStyle(fontSize: 12, color: Colors.black87)),
+                            Text(detailsText, style: const TextStyle(fontSize: 12, color: Colors.black87)),
                             const SizedBox(height: 2),
                             Text(item['date'].toString(), style: const TextStyle(fontSize: 11, color: Colors.grey)),
                           ],
